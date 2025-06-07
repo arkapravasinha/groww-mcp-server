@@ -12,7 +12,7 @@ export default function createStatelessServer({
   config: z.infer<typeof configSchema>;
 }) {
   const server = new McpServer({
-    name: "My MCP Server",
+    name: "groww-mcp-server",
     version: "1.0.0",
   });
 
