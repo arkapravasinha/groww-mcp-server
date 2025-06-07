@@ -4,6 +4,7 @@ import { z } from "zod";
 // Optional: Define configuration schema to require configuration at connection time
 export const configSchema = z.object({
   debug: z.boolean().default(false).describe("Enable debug logging"),
+  apiKey: z.string().describe("API key for the Groww API"),
 });
 
 export default function createStatelessServer({
