@@ -1,7 +1,7 @@
 # Groww MCP Server
 
 A comprehensive Model Context Protocol (MCP) server for the Groww Trading API. This server provides tools to interact with Groww's trading platform, enabling you to place orders, manage your portfolio, access live market data, and more.
-
+[![smithery badge](https://smithery.ai/badge/@arkapravasinha/groww-mcp-server)](https://smithery.ai/server/@arkapravasinha/groww-mcp-server)
 ## Features
 
 This MCP server provides access to all major Groww API endpoints:
