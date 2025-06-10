@@ -38,6 +38,19 @@ This MCP server provides access to all major Groww API endpoints:
 ### 📈 Historical Data
 - **`get_historical_data`** - Get historical candle data for instruments
 
+### 📊 Technical Analysis
+- **`calculate_moving_averages`** - Calculate SMA and EMA for trend analysis
+- **`calculate_rsi`** - Calculate Relative Strength Index for momentum analysis  
+- **`calculate_bollinger_bands`** - Calculate Bollinger Bands for volatility analysis
+- **`calculate_support_resistance`** - Identify key support and resistance levels
+- **`calculate_volatility_metrics`** - Calculate various volatility metrics for risk assessment
+- **`calculate_macd`** - Calculate MACD for trend and momentum analysis
+- **`calculate_stochastic`** - Calculate Stochastic Oscillator for momentum analysis
+- **`calculate_williams_r`** - Calculate Williams %R for momentum analysis
+- **`calculate_adx`** - Calculate ADX for trend strength analysis
+- **`calculate_fibonacci_levels`** - Calculate Fibonacci retracement and extension levels
+- **`analyze_candlestick_patterns`** - Identify common candlestick patterns
+
 ## Prerequisites
 
 1. **Groww Account**: You need a Groww account with F&O trading enabled
@@ -189,6 +202,124 @@ get_historical_data({
   start_time: "2024-01-01 09:15:00",
   end_time: "2024-01-01 15:30:00",
   interval_in_minutes: 5
+})
+```
+
+### Technical Analysis Examples
+```javascript
+// Calculate moving averages
+calculate_moving_averages({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE", 
+  segment: "CASH",
+  start_time: "2024-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  periods: [5, 10, 20, 50]
+})
+
+// Calculate RSI
+calculate_rsi({
+  trading_symbol: "NIFTY",
+  exchange: "NSE",
+  segment: "CASH", 
+  start_time: "2024-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  period: 14
+})
+
+// Calculate Bollinger Bands
+calculate_bollinger_bands({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2024-01-01 09:15:00", 
+  end_time: "2024-01-31 15:30:00",
+  period: 20,
+  std_dev: 2
+})
+
+// Find support and resistance levels
+calculate_support_resistance({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH", 
+  start_time: "2023-12-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  interval_in_minutes: 60,
+  min_touches: 2
+})
+
+// Calculate volatility metrics
+calculate_volatility_metrics({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2023-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00", 
+  interval_in_minutes: 1440 // Daily candles
+})
+
+// Calculate MACD
+calculate_macd({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2024-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  fast_period: 12,
+  slow_period: 26,
+  signal_period: 9
+})
+
+// Calculate Stochastic Oscillator
+calculate_stochastic({
+  trading_symbol: "NIFTY",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2024-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  k_period: 14,
+  d_period: 3
+})
+
+// Calculate Williams %R
+calculate_williams_r({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2024-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  period: 14
+})
+
+// Calculate ADX for trend strength
+calculate_adx({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2024-01-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  period: 14
+})
+
+// Calculate Fibonacci levels
+calculate_fibonacci_levels({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2023-12-01 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  trend_direction: "AUTO"
+})
+
+// Analyze candlestick patterns
+analyze_candlestick_patterns({
+  trading_symbol: "RELIANCE",
+  exchange: "NSE",
+  segment: "CASH",
+  start_time: "2024-01-25 09:15:00",
+  end_time: "2024-01-31 15:30:00",
+  lookback_candles: 5
 })
 ```
 
