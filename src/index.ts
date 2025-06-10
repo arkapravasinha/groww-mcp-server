@@ -76,7 +76,25 @@ export default function createStatelessServer({
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      let errorMessage = `API request failed: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage += `\nAPI Error: ${errorData.error.message || 'Unknown error'} (Code: ${errorData.error.code || 'N/A'})`;
+        } else if (errorData.message) {
+          errorMessage += `\nError: ${errorData.message}`;
+        } else {
+          errorMessage += `\nResponse: ${JSON.stringify(errorData)}`;
+        }
+      } catch (parseError) {
+        const responseText = await response.text();
+        if (responseText) {
+          errorMessage += `\nResponse: ${responseText}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -319,36 +337,97 @@ export default function createStatelessServer({
 
   server.tool(
     "place_order",
-    "Place a new order in the market (stocks, F&O, etc.)",
+    "Place a new order in the market (stocks, F&O, etc.) - Official Groww API: POST /v1/order/create",
     {
-      trading_symbol: z.string().describe("Trading symbol of the instrument (e.g., 'RELIANCE', 'WIPRO')"),
-      quantity: z.number().int().positive().describe("Quantity to order"),
-      exchange: z.enum(["NSE", "BSE"]).describe("Stock exchange"),
-      segment: z.enum(["CASH", "FNO"]).describe("Market segment"),
-      product: z.enum(["CNC", "MIS", "NRML"]).describe("Product type"),
-      order_type: z.enum(["MARKET", "LIMIT", "SL", "SL_M"]).describe("Order type"),
-      transaction_type: z.enum(["BUY", "SELL"]).describe("Transaction type"),
-      validity: z.enum(["DAY"]).default("DAY").describe("Order validity"),
-      price: z.number().optional().describe("Price for limit orders (in rupees)"),
-      trigger_price: z.number().optional().describe("Trigger price for stop loss orders (in rupees)"),
-      order_reference_id: z.string().optional().describe("User-defined reference ID (8-20 alphanumeric characters)"),
+      trading_symbol: z.string().min(1).describe("Trading Symbol of the instrument as defined by the exchange (required)"),
+      quantity: z.number().int().positive().describe("Quantity of the instrument to order (required)"),
+      exchange: z.enum(["NSE", "BSE"]).describe("Stock exchange (required)"),
+      segment: z.enum(["CASH", "FNO"]).describe("Segment of the instrument such as CASH, FNO etc. (required)"),
+      product: z.enum(["CNC", "MIS", "NRML"]).describe("Product type (required) - CNC, MIS, NRML"),
+      order_type: z.enum(["MARKET", "LIMIT", "SL", "SL_M"]).describe("Order type (required) - MARKET, LIMIT, SL, SL_M"),
+      transaction_type: z.enum(["BUY", "SELL"]).describe("Transaction type of the trade (required) - BUY or SELL"),
+      validity: z.enum(["DAY"]).default("DAY").describe("Validity of the order (required) - currently only DAY is supported"),
+      price: z.number().positive().optional().describe("Price of the instrument in rupees for Limit order (decimal) - required for LIMIT and SL orders"),
+      trigger_price: z.number().positive().optional().describe("Trigger price in rupees for the order (decimal) - required for SL and SL_M orders"),
+      order_reference_id: z.string().min(8).max(20).regex(/^[a-zA-Z0-9-]+$/).optional().describe("User provided 8 to 20 length alphanumeric string with at most two hyphens (-)"),
     },
     async ({ trading_symbol, quantity, exchange, segment, product, order_type, transaction_type, validity, price, trigger_price, order_reference_id }) => {
       try {
-        const body: any = {
-          trading_symbol,
-          quantity,
-          exchange,
-          segment,
-          product,
-          order_type,
-          transaction_type,
-          validity,
+        // Validate all required parameters are present
+        if (!trading_symbol || !quantity || !exchange || !segment || !product || !order_type || !transaction_type || !validity) {
+          return {
+            content: [{ type: "text", text: "❌ Error: Missing required parameters. All of trading_symbol, quantity, exchange, segment, product, order_type, transaction_type, and validity are required." }],
+          };
+        }
+
+        // Generate reference ID if not provided
+        if (!order_reference_id || order_reference_id.trim() === '') {
+          const timestamp = Date.now().toString();
+          const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+          order_reference_id = `ORD-${timestamp.slice(-8)}-${randomSuffix}`;
+        }
+
+        // Validate order_reference_id format (at most two hyphens)
+        const hyphenCount = (order_reference_id.match(/-/g) || []).length;
+        if (hyphenCount > 2) {
+          return {
+            content: [{ type: "text", text: "❌ Error: order_reference_id can have at most two hyphens (-)" }],
+          };
+        }
+
+        // Validate length (8-20 characters)
+        if (order_reference_id.length < 8 || order_reference_id.length > 20) {
+          return {
+            content: [{ type: "text", text: "❌ Error: order_reference_id must be between 8-20 characters" }],
+          };
+        }
+
+        // Validate price requirements based on order type
+        if ((order_type === "LIMIT" || order_type === "SL") && (price === undefined || price === null)) {
+          return {
+            content: [{ type: "text", text: `❌ Error: Price is required for ${order_type} orders` }],
+          };
+        }
+
+        if ((order_type === "SL" || order_type === "SL_M") && (trigger_price === undefined || trigger_price === null)) {
+          return {
+            content: [{ type: "text", text: `❌ Error: Trigger price is required for ${order_type} orders` }],
+          };
+        }
+
+        // Build request body exactly as per official API documentation example
+        // Order matches the example: trading_symbol, quantity, price, trigger_price, validity, exchange, segment, product, order_type, transaction_type, order_reference_id
+        const body: Record<string, any> = {
+          trading_symbol: trading_symbol,
+          quantity: quantity,
         };
 
-        if (price !== undefined) body.price = price;
-        if (trigger_price !== undefined) body.trigger_price = trigger_price;
-        if (order_reference_id) body.order_reference_id = order_reference_id;
+        // Add price and trigger_price in the order shown in API docs (after quantity, before validity)
+        if (price !== undefined && price !== null) {
+          body.price = price;
+        }
+        
+        if (trigger_price !== undefined && trigger_price !== null) {
+          body.trigger_price = trigger_price;
+        }
+
+        // Continue with required fields in API docs order
+        body.validity = validity;
+        body.exchange = exchange;
+        body.segment = segment;
+        body.product = product;
+        body.order_type = order_type;
+        body.transaction_type = transaction_type;
+        
+        // Add order_reference_id (now always present - either provided or auto-generated)
+        body.order_reference_id = order_reference_id;
+
+        // Debug logging
+        if (config.debug) {
+          console.log("Place Order Request Body:", JSON.stringify(body, null, 2));
+          console.log("Request URL: https://api.groww.in/v1/order/create");
+          console.log("Request Headers:", JSON.stringify(getHeaders(), null, 2));
+        }
 
         const data = await makeRequest("https://api.groww.in/v1/order/create", {
           method: "POST",
@@ -356,17 +435,25 @@ export default function createStatelessServer({
           body: JSON.stringify(body),
         });
 
+        // Check if reference ID was auto-generated
+        const wasGenerated = order_reference_id.startsWith('ORD-');
+        
         return {
           content: [
             {
               type: "text",
-              text: `Order placed successfully!\n\nOrder ID: ${data.groww_order_id}\nStatus: ${data.order_status}\nReference ID: ${data.order_reference_id || 'N/A'}\nRemark: ${data.remark}`
+              text: `✅ Order placed successfully!\n\n📋 Order Response:\n• Order ID: ${data.groww_order_id}\n• Order Status: ${data.order_status}\n• Reference ID: ${data.order_reference_id || order_reference_id}${wasGenerated ? ' (auto-generated)' : ''}\n• Remark: ${data.remark}\n\n📊 Order Summary:\n• Symbol: ${trading_symbol} (${exchange})\n• Transaction: ${transaction_type} ${quantity} units\n• Price: ${price ? `₹${price}` : 'MARKET PRICE'}\n• Product: ${product} | Segment: ${segment}\n• Validity: ${validity}${trigger_price ? `\n• Trigger Price: ₹${trigger_price}` : ''}`
             }
           ],
         };
       } catch (error) {
+        // Enhanced error logging
+        if (config.debug) {
+          console.error("Place Order Error:", error);
+        }
+        
         return {
-          content: [{ type: "text", text: `Error placing order: ${error}` }],
+          content: [{ type: "text", text: `❌ Error placing order: ${error}\n\nPlease verify:\n• All required parameters are provided\n• Trading symbol exists and is correct\n• Price/trigger_price are provided for LIMIT/SL orders\n• API key is valid and has trading permissions` }],
         };
       }
     }
